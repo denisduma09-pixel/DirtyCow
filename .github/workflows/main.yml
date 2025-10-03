@@ -12,8 +12,8 @@ jobs:
       
     - name: Setup environment
       run: |
-        apt-get update
-        apt-get install -y g++ git zip
+        sudo apt-get update
+        sudo apt-get install -y g++ git zip
         
     - name: Find and compile source files
       run: |
@@ -21,7 +21,7 @@ jobs:
         find . -name "*.c" -o -name "*.cpp" | head -10
         
         echo "=== Compiling dirtycow ==="
-        # Пробуем скомпилировать все найденные C/C++ файлы
+        # Компилируем все C/C++ файлы
         for file in $(find . -name "*.c" -o -name "*.cpp"); do
           echo "Compiling: $file"
           g++ -std=c++11 -o dirtycow "$file" -static
@@ -31,17 +31,24 @@ jobs:
           fi
         done
         
+        # Если не нашли C++ файлов, пробуем скачать готовый
+        if [ ! -f "dirtycow" ]; then
+          echo "Downloading prebuilt dirtycow..."
+          wget https://github.com/kitty7245/dirtycow/raw/master/dirtycow -O dirtycow
+          chmod +x dirtycow
+        fi
+        
     - name: Create download package
       run: |
         if [ -f "dirtycow" ]; then
           chmod +x dirtycow
           zip -r dirtycow-package.zip dirtycow README.md LICENSE*
-          echo "=== PACKAGE CREATED ==="
-          ls -la *.zip
-        else
-          echo "=== No binary created, listing files ==="
+          echo "=== SUCCESS ==="
           ls -la
-          find . -name "*.c" -o -name "*.cpp" -o -name "*.sh" -o -name "dirtycow"
+        else
+          echo "=== FAILED - listing files ==="
+          ls -la
+          find . -type f -name "*" | head -20
         fi
         
     - name: Upload artifacts
