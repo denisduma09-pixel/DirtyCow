@@ -1,61 +1,13 @@
-name: Build DirtyCow
-
-on: [push, workflow_dispatch]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++ git zip
-        
-    - name: Find and compile source files
-      run: |
-        echo "=== Searching for source files ==="
-        find . -name "*.c" -o -name "*.cpp" | head -10
-        
-        echo "=== Compiling dirtycow ==="
-        # Компилируем все C/C++ файлы
-        for file in $(find . -name "*.c" -o -name "*.cpp"); do
-          echo "Compiling: $file"
-          g++ -std=c++11 -o dirtycow "$file" -static
-          if [ -f "dirtycow" ]; then
-            echo "Success! Binary created"
-            break
-          fi
-        done
-        
-        # Если не нашли C++ файлов, пробуем скачать готовый
-        if [ ! -f "dirtycow" ]; then
-          echo "Downloading prebuilt dirtycow..."
-          wget https://github.com/kitty7245/dirtycow/raw/master/dirtycow -O dirtycow
-          chmod +x dirtycow
-        fi
-        
-    - name: Create download package
-      run: |
-        if [ -f "dirtycow" ]; then
-          chmod +x dirtycow
-          zip -r dirtycow-package.zip dirtycow README.md LICENSE*
-          echo "=== SUCCESS ==="
-          ls -la
-        else
-          echo "=== FAILED - listing files ==="
-          ls -la
-          find . -type f -name "*" | head -20
-        fi
-        
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: DirtyCow-Binary
-        path: |
-          *.zip
-          dirtycow
-          *.apk
+- name: Simple compile
+  run: |
+    # Компилируем первый найденный C файл
+    C_FILE=$(find . -name "*.c" | head -1)
+    if [ -n "$C_FILE" ]; then
+      echo "Compiling: $C_FILE"
+      gcc -o dirtycow "$C_FILE" -static
+      chmod +x dirtycow
+      ls -la dirtycow
+    else
+      echo "No C files found, listing all files:"
+      find . -type f | head -20
+    fi
