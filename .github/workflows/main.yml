@@ -8,18 +8,37 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
       
-    - name: Build APK
+    - name: Check build files
       run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug
+        ls -la
+        find . -name "*.gradle" -o -name "*.mk" -o -name "Makefile"
+        
+    - name: Try to build APK
+      run: |
+        # Пробуем найти скрипт сборки
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        elif [ -f "build.gradle" ]; then
+          gradle assembleDebug
+        else
+          echo "No build system found"
+          # Собираем нативный бинарник
+          g++ -o dirtycow *.cpp -static
+          zip dirtycow-app.zip dirtycow
+        fi
       
     - name: Upload APK
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: DirtyCow-APK
-        path: app/build/outputs/apk/debug/*.apk
+        name: DirtyCow-Build
+        path: |
+          app/build/outputs/apk/debug/*.apk
+          *.apk
+          *.zip
+          dirtycow
