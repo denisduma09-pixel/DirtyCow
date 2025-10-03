@@ -1,4 +1,4 @@
-name: Build DirtyCow APK
+name: Build DirtyCow
 
 on: [push, workflow_dispatch]
 
@@ -10,35 +10,45 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-      
-    - name: Check build files
+    - name: Setup environment
       run: |
-        ls -la
-        find . -name "*.gradle" -o -name "*.mk" -o -name "Makefile"
+        apt-get update
+        apt-get install -y g++ git zip
         
-    - name: Try to build APK
+    - name: Find and compile source files
       run: |
-        # Пробуем найти скрипт сборки
-        if [ -f "gradlew" ]; then
-          chmod +x gradlew
-          ./gradlew assembleDebug
-        elif [ -f "build.gradle" ]; then
-          gradle assembleDebug
+        echo "=== Searching for source files ==="
+        find . -name "*.c" -o -name "*.cpp" | head -10
+        
+        echo "=== Compiling dirtycow ==="
+        # Пробуем скомпилировать все найденные C/C++ файлы
+        for file in $(find . -name "*.c" -o -name "*.cpp"); do
+          echo "Compiling: $file"
+          g++ -std=c++11 -o dirtycow "$file" -static
+          if [ -f "dirtycow" ]; then
+            echo "Success! Binary created"
+            break
+          fi
+        done
+        
+    - name: Create download package
+      run: |
+        if [ -f "dirtycow" ]; then
+          chmod +x dirtycow
+          zip -r dirtycow-package.zip dirtycow README.md LICENSE*
+          echo "=== PACKAGE CREATED ==="
+          ls -la *.zip
         else
-          echo "No build system found"
-          # Собираем нативный бинарник
-          g++ -o dirtycow *.cpp -static
-          zip dirtycow-app.zip dirtycow
+          echo "=== No binary created, listing files ==="
+          ls -la
+          find . -name "*.c" -o -name "*.cpp" -o -name "*.sh" -o -name "dirtycow"
         fi
-      
-    - name: Upload APK
+        
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: DirtyCow-Build
+        name: DirtyCow-Binary
         path: |
-          app/build/outputs/apk/debug/*.apk
-          *.apk
           *.zip
           dirtycow
+          *.apk
