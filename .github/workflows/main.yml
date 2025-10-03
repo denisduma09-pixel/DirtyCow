@@ -1,13 +1,59 @@
-- name: Simple compile
-  run: |
-    # Компилируем первый найденный C файл
-    C_FILE=$(find . -name "*.c" | head -1)
-    if [ -n "$C_FILE" ]; then
-      echo "Compiling: $C_FILE"
-      gcc -o dirtycow "$C_FILE" -static
-      chmod +x dirtycow
-      ls -la dirtycow
-    else
-      echo "No C files found, listing all files:"
-      find . -type f | head -20
-    fi
+name: Build DirtyCow
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ git zip
+        
+    - name: Find source files
+      run: |
+        echo "=== Searching for source files ==="
+        find . -name "*.c" -o -name "*.cpp" -o -name "*.cc"
+        
+    - name: Compile dirtycow
+      run: |
+        echo "=== Compiling dirtycow ==="
+        C_FILE=$(find . -name "*.c" | head -1)
+        if [ -n "$C_FILE" ]; then
+          echo "Compiling C file: $C_FILE"
+          gcc -o dirtycow "$C_FILE" -static
+        else
+          CPP_FILE=$(find . -name "*.cpp" | head -1)
+          if [ -n "$CPP_FILE" ]; then
+            echo "Compiling C++ file: $CPP_FILE"
+            g++ -std=c++11 -o dirtycow "$CPP_FILE" -static
+          else
+            echo "No C/C++ files found"
+          fi
+        fi
+        
+    - name: Create package
+      run: |
+        if [ -f "dirtycow" ]; then
+          chmod +x dirtycow
+          echo "=== SUCCESS: Binary created ==="
+          ls -la dirtycow
+          zip dirtycow-package.zip dirtycow
+        else
+          echo "=== No binary created ==="
+          # Создаем архив с исходниками
+          zip sources.zip *.c *.cpp *.md
+        fi
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: DirtyCow-Result
+        path: |
+          dirtycow
+          *.zip
